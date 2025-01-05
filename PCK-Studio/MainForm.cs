@@ -95,9 +95,10 @@ namespace PckStudio {
 
 			pckOpen.AllowDrop = true;
 
-			fileCountLabel.Text = string.Empty;
-			currentFileTypeLabel.Text = string.Empty;
-			imageSizeLabel.Text = string.Empty;
+			fileCountLabel.Visible = false;
+			propertyCountLabel.Visible = false;
+			currentFileTypeLabel.Visible = false;
+			imageSizeLabel.Visible = false;
 
 			changelogRichText.Text = Resources.CHANGELOG;
 
@@ -154,7 +155,7 @@ namespace PckStudio {
 				MessageBox.Show(this, string.Format("Failed to load {0}", Path.GetFileName(filepath)), "Error");
 				return;
 			}
-
+			currentFilename = Utilities.Basename(filepath);
 			CheckForPasswordAndRemove();
 			LoadEditorTab();
 		}
@@ -203,8 +204,7 @@ namespace PckStudio {
 			for(int i = 0; i < Settings.Default.RecentFiles.Count && i < 5; i++) {
 				string filepath = Settings.Default.RecentFiles[i];
 				if(!string.IsNullOrWhiteSpace(filepath)) {
-					string displayFilepath = filepath.Substring(filepath.LastIndexOf('\\')+1);
-					ToolStripItem item = recentlyOpenToolStripMenuItem.DropDownItems.Add(displayFilepath, null, HandleOpenFile);
+					ToolStripItem item = recentlyOpenToolStripMenuItem.DropDownItems.Add(Utilities.Basename(filepath), null, HandleOpenFile);
 					item.Tag = filepath;
 				}
 			}
@@ -317,7 +317,8 @@ namespace PckStudio {
 		}
 
 		private void LoadEditorTab() {
-			fileCountLabel.Text = "Files: " + currentPCK.AssetCount;
+			fileCountLabel.Visible = true;
+			fileCountLabel.Text = Utilities.Pluralize(currentPCK.AssetCount, "{0} file", "{0} files");
 			if(isTemplateFile)
 				currentFilename = "Untitled";
 			else
@@ -326,7 +327,6 @@ namespace PckStudio {
 			closeToolStripMenuItem.Visible = true;
 			fullBoxSupportToolStripMenuItem.Checked = currentPCK.HasVerionString;
 			packSettingsToolStripMenuItem.Visible = true;
-
 			saveToolStripMenuItem.Enabled = true;
 			saveToolStripMenuItem1.Enabled = true;
 			quickChangeToolStripMenuItem.Enabled = true;
@@ -354,7 +354,10 @@ namespace PckStudio {
 			quickChangeToolStripMenuItem.Enabled = false;
 			closeToolStripMenuItem.Visible = false;
 			packSettingsToolStripMenuItem.Visible = false;
-			fileCountLabel.Text = string.Empty;
+			fileCountLabel.Visible = false;
+			propertyCountLabel.Visible = false;
+			currentFileTypeLabel.Visible = false;
+			imageSizeLabel.Visible = false;
 			currentFilename = "";
 		}
 
@@ -569,16 +572,21 @@ namespace PckStudio {
 		private void treeViewMain_AfterSelect(object sender, TreeViewEventArgs e) {
 			ReloadMetaTreeView();
 
-			entryTypeTextBox.Text = entryDataTextBox.Text = imageSizeLabel.Text = string.Empty;
+			propertyCountLabel.Visible = false;
+			currentFileTypeLabel.Visible = false;
+			imageSizeLabel.Visible = false;
+
+			entryTypeTextBox.Text = entryDataTextBox.Text = string.Empty;
 			buttonEdit.Visible = false;
 
 			previewPictureBox.Image = Resources.NoImageFound;
 			viewFileInfoToolStripMenuItem.Visible = false;
 
-			currentFileTypeLabel.Text = string.Empty;
 			if(e.Node.TryGetTagData(out PckAsset asset)) {
+				propertyCountLabel.Visible = true;
+				propertyCountLabel.Text = Utilities.Pluralize(asset.PropertyCount, "{0} property", "{0} properties");
+				currentFileTypeLabel.Visible = true;
 				currentFileTypeLabel.Text = asset.Type.ToString();
-
 				viewFileInfoToolStripMenuItem.Visible = true;
 				if(asset.HasProperty("BOX")) {
 					buttonEdit.Text = "EDIT BOXES";
@@ -588,7 +596,6 @@ namespace PckStudio {
 					buttonEdit.Text = "View Skin";
 					buttonEdit.Visible = true;
 				}
-
 				switch(asset.Type) {
 					case PckAssetType.SkinFile:
 					case PckAssetType.CapeFile:
@@ -601,10 +608,11 @@ namespace PckStudio {
 
 						try {
 							previewPictureBox.Image = img;
+							imageSizeLabel.Visible = true;
 							imageSizeLabel.Text = $"{previewPictureBox.Image.Size.Width}x{previewPictureBox.Image.Size.Height}";
 						} catch(Exception ex) {
-							imageSizeLabel.Text = "";
 							previewPictureBox.Image = Resources.NoImageFound;
+							imageSizeLabel.Visible = false;
 							Debug.WriteLine("Not a supported image format. Setting back to default");
 							Debug.WriteLine(string.Format("An error occured of type: {0} with message: {1}", ex.GetType(), ex.Message), "Exception");
 						}
@@ -2239,6 +2247,7 @@ namespace PckStudio {
 								MessageBoxButtons.OK,
 								MessageBoxIcon.Information
 							);
+							BuildMainTreeView();
 						}
 					}
 				}
