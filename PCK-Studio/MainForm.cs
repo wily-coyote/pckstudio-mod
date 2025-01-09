@@ -1,44 +1,43 @@
-﻿using OMI.Formats.Behaviour;
-using OMI.Formats.GameRule;
-using OMI.Formats.Languages;
-using OMI.Formats.Material;
-using OMI.Formats.Model;
-using OMI.Formats.Pck;
-using OMI.Workers;
-using OMI.Workers.Behaviour;
-using OMI.Workers.GameRule;
-using OMI.Workers.Language;
-using OMI.Workers.Material;
-using OMI.Workers.Model;
-using OMI.Workers.Pck;
-using PckStudio.Extensions;
-using PckStudio.External.API.Miles;
-using PckStudio.FileFormats;
-using PckStudio.Forms;
-using PckStudio.Forms.Additional_Popups;
-using PckStudio.Forms.Additional_Popups.Animation;
-using PckStudio.Forms.Editor;
-using PckStudio.Forms.Features;
-using PckStudio.Internal;
-using PckStudio.Internal.App;
-using PckStudio.Internal.Deserializer;
-using PckStudio.Internal.IO._3DST;
-using PckStudio.Internal.IO.PckAudio;
-using PckStudio.Internal.Json;
-using PckStudio.Internal.Misc;
-using PckStudio.Internal.Serializer;
-using PckStudio.Popups;
-using PckStudio.Properties;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Drawing.Imaging;
-using System.IO;
-using System.Linq;
+﻿using System;
 using System.Windows.Forms;
 using System.Media;
+using System.IO;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.Drawing.Drawing2D;
+using System.Diagnostics;
+using System.Collections.Generic;
+using PckStudio.Properties;
+using PckStudio.Popups;
+using PckStudio.Internal;
+using PckStudio.Internal.Serializer;
+using PckStudio.Internal.Misc;
+using PckStudio.Internal.Json;
+using PckStudio.Internal.IO._3DST;
+using PckStudio.Internal.IO.PckAudio;
+using PckStudio.Internal.Deserializer;
+using PckStudio.Internal.App;
+using PckStudio.Forms;
+using PckStudio.Forms.Features;
+using PckStudio.Forms.Editor;
+using PckStudio.Forms.Additional_Popups;
+using PckStudio.Forms.Additional_Popups.Animation;
+using PckStudio.FileFormats;
+using PckStudio.External.API.Miles;
+using PckStudio.Extensions;
+using OMI.Workers;
+using OMI.Workers.Pck;
+using OMI.Workers.Model;
+using OMI.Workers.Material;
+using OMI.Workers.Language;
+using OMI.Workers.GameRule;
+using OMI.Workers.Behaviour;
+using OMI.Formats.Pck;
+using OMI.Formats.Model;
+using OMI.Formats.Material;
+using OMI.Formats.Languages;
+using OMI.Formats.GameRule;
+using OMI.Formats.Behaviour;
 
 namespace PckStudio {
 	public partial class MainForm : Form {
@@ -233,17 +232,17 @@ namespace PckStudio {
 			}
 		}
 
-		private void HandleOpenFile(object sender, EventArgs e)
-		{
-			if (sender is ToolStripItem menuItem && menuItem.Tag is string filepath)
-			{
-				if (!File.Exists(filepath))
-				{
-					menuItem.Available = false;
-					return;
-				}				
-				LoadPckFromFile(filepath);
-			}
+		private void HandleOpenFile(object sender, EventArgs e) {
+			if(sender is ToolStripItem menuItem)
+				if(menuItem.Tag is string filepath)
+					if(File.Exists(filepath))
+						LoadPckFromFile(filepath);
+					else
+						MessageBox.Show(this,
+						$"Couldn't open {menuItem.Text}.",
+						"Error",
+						MessageBoxButtons.OK,
+						MessageBoxIcon.Error);
 		}
 
 		private void SaveToRecentFiles(string filepath) {
@@ -386,25 +385,25 @@ namespace PckStudio {
 			return node;
 		}
 
-		private TreeNode BuildNodeTreeBySeperator(TreeNodeCollection root, string path, char seperator) {
+		private TreeNode BuildNodeTreeBySeperator(TreeNodeCollection root, string path, char separator) {
 			_ = root ?? throw new ArgumentNullException(nameof(root));
-			if(!path.Contains(seperator)) {
+			if(!path.ToCharArray().ContainsAny([separator])) {
 				TreeNode finalNode = CreateNode(path);
 				root.Add(finalNode);
 				return finalNode;
 			}
-			string nodeText = path.Substring(0, path.IndexOf(seperator));
-			string subPath = path.Substring(path.IndexOf(seperator) + 1);
+			string nodeText = path.Substring(0, path.IndexOf(separator));
+			string subPath = path.Substring(path.IndexOf(separator) + 1);
 
 			if(string.IsNullOrWhiteSpace(nodeText)) {
-				return BuildNodeTreeBySeperator(root, subPath, seperator);
+				return BuildNodeTreeBySeperator(root, subPath, separator);
 			}
 
 			bool alreadyExists = root.ContainsKey(nodeText);
 			TreeNode subNode = alreadyExists ? root[nodeText] : CreateNode(nodeText);
 			if(!alreadyExists)
 				root.Add(subNode);
-			return BuildNodeTreeBySeperator(subNode.Nodes, subPath, seperator);
+			return BuildNodeTreeBySeperator(subNode.Nodes, subPath, separator);
 		}
 
 		private void BuildPckTreeView(TreeNodeCollection root, PckFile pckFile) {
@@ -463,7 +462,15 @@ namespace PckStudio {
 					Animation animation = asset.GetDeserializedData(AnimationDeserializer.DefaultDeserializer);
 					string internalName = Path.GetFileNameWithoutExtension(asset.Filename);
 					IList<JsonTileInfo> textureInfos = resourceLocation.Category == ResourceCategory.ItemAnimation ? Tiles.ItemTileInfos : Tiles.BlockTileInfos;
-					string displayname = textureInfos.FirstOrDefault(p => p.InternalName == internalName)?.DisplayName ?? internalName;
+
+					string displayname = internalName;
+					foreach(var info in textureInfos){
+						if(info.InternalName == internalName){
+							displayname = info.DisplayName;
+							goto endOfLoop;
+						}
+					}
+					endOfLoop:
 
 					string[] specialTileNames = { "clock", "compass" };
 
@@ -702,8 +709,9 @@ namespace PckStudio {
 
 			string selectedFolder = node.FullPath;
 
-			foreach(PckAsset asset in currentPCK.GetAssets().Where(asset => asset.Filename.StartsWith(selectedFolder))) {
-				extractFolderFile(outPath, asset);
+			foreach(PckAsset asset in currentPCK.GetAssets()) {
+				if(asset.Filename.StartsWith(selectedFolder))
+					extractFolderFile(outPath, asset);
 			}
 		}
 
@@ -1108,8 +1116,9 @@ namespace PckStudio {
 					newNode.Tag = newFile;
 					newNode.ImageIndex = node.ImageIndex;
 					newNode.SelectedImageIndex = node.SelectedImageIndex;
-
-					if(GetAllChildNodes(treeViewMain.Nodes).FirstOrDefault(n => n.FullPath == diag.NewText) is not null) {
+					
+					foreach(var child in GetAllChildNodes(treeViewMain.Nodes)){
+						if(child.FullPath == diag.NewText){
 						MessageBox.Show(this,
 							$"A file with the path \"{diag.NewText}\" already exists. " +
 							$"Please try again with a different name.",
@@ -1117,6 +1126,7 @@ namespace PckStudio {
 							MessageBoxButtons.OK,
 							MessageBoxIcon.Error);
 						return;
+						}
 					}
 
 					TreeNodeCollection nodeCollection = node.Parent?.Nodes ?? treeViewMain.Nodes;
@@ -1205,16 +1215,25 @@ namespace PckStudio {
 			TreeNode targetNode = treeViewMain.GetNodeAt(targetPoint);
 
 			if(e.Data.GetDataPresent(DataFormats.FileDrop) && e.Data.GetData(DataFormats.FileDrop) is string[] filesDropped) {
-				IEnumerable<string> files = filesDropped.Where(File.Exists);
-				IEnumerable<string> directoryFiles = filesDropped
-					.Where(f => (File.GetAttributes(f) & FileAttributes.Directory) != 0)
-					.SelectMany(dir => Directory.GetFiles(dir, "*.*", SearchOption.AllDirectories));
-
-				string baseDirectory = Path.GetDirectoryName(filesDropped.First());
-
-				IEnumerable<string> importPaths = files.Concat(directoryFiles);
-
-				ImportFiles(baseDirectory, importPaths, string.IsNullOrWhiteSpace(targetNode?.FullPath) ? string.Empty : targetNode?.FullPath);
+				List<string> files = new List<string>();
+				List<string> directories = new List<string>();
+				foreach(var path in filesDropped){
+					if(File.Exists(path)){
+						files.Add(path);
+					} else if (Directory.Exists(path)){
+						directories.AddRange(Directory.GetDirectories(path, "*.*", SearchOption.AllDirectories));
+					}
+				}
+				string baseDirectory = Path.GetDirectoryName(directories[0]);
+				List<string> importPaths = new List<string>();
+				importPaths.AddRange(files);
+				importPaths.AddRange(directories);
+				ImportFiles(
+					baseDirectory,
+					importPaths,
+					importPaths.Count,
+					string.IsNullOrWhiteSpace(targetNode?.FullPath) ? string.Empty : targetNode?.FullPath
+				);
 				return;
 			}
 
@@ -1273,7 +1292,12 @@ namespace PckStudio {
 				BuildMainTreeView();
 				return;
 			} else {
-				IEnumerable<PckAsset> pckFiles = GetAllChildNodes(draggedNode.Nodes).Where(t => t.IsTagOfType<PckAsset>()).Select(t => t.Tag as PckAsset);
+				List<PckAsset> pckFiles = new List<PckAsset>();
+				foreach(var node in GetAllChildNodes(draggedNode.Nodes)){
+					if(node.IsTagOfType<PckAsset>()){
+						pckFiles.Add(node.Tag as PckAsset);
+					}
+				}
 				string oldPath = draggedNode.FullPath;
 				string newPath = Path.Combine(isTargetPckFile ? Path.GetDirectoryName(targetNode.FullPath) : targetNode.FullPath, draggedNode.Text).Replace('\\', '/');
 				foreach(PckAsset pckFile in pckFiles) {
@@ -1293,8 +1317,12 @@ namespace PckStudio {
 			return childNodes;
 		}
 
-		private void ImportFiles(string baseDirectory, IEnumerable<string> files, string prefix) {
-			int fileCount = files.Count();
+		private void ImportFiles(
+				string baseDirectory,
+				IEnumerable<string> files,
+				int fileCount,
+				string prefix
+			) {
 			int addedCount = 0;
 			int skippedFiles = 0;
 			int skipAttempts = 3;
@@ -1750,9 +1778,13 @@ namespace PckStudio {
 		private void OpenPck_DragEnter(object sender, DragEventArgs e) {
 			pckOpen.Image = Resources.pckDrop;
 			string[] files = (string[])e.Data.GetData(DataFormats.FileDrop) ?? Array.Empty<string>();
-			e.Effect = files.Any(file => Path.GetExtension(file).Equals(".pck", StringComparison.CurrentCultureIgnoreCase))
-				? DragDropEffects.Copy
-				: DragDropEffects.None;
+			e.Effect = DragDropEffects.None;
+			foreach(var file in files){
+				if(Path.GetExtension(file).ToLower() == ".pck"){
+					e.Effect = DragDropEffects.Copy;
+					break;
+				}
+			}
 		}
 
 		private void OpenPck_DragDrop(object sender, DragEventArgs e) {
@@ -1989,7 +2021,7 @@ namespace PckStudio {
 		private void correctSkinDecimalsToolStripMenuItem_Click(object sender, EventArgs e) {
 			if(treeViewMain.SelectedNode.TryGetTagData(out PckAsset asset) &&
 				asset.Type == PckAssetType.SkinFile) {
-				foreach(KeyValuePair<string, string> p in asset.GetProperties().ToList()) {
+				foreach(KeyValuePair<string, string> p in asset.GetProperties()) {
 					if(p.Key == "BOX" || p.Key == "OFFSET")
 						asset.SetProperty(asset.GetPropertyIndex(p), new KeyValuePair<string, string>(p.Key, p.Value.Replace(',', '.')));
 				}
@@ -2016,7 +2048,7 @@ namespace PckStudio {
 
 		private void editAllEntriesToolStripMenuItem_Click(object sender, EventArgs e) {
 			if(treeViewMain.SelectedNode.TryGetTagData(out PckAsset asset)) {
-				IEnumerable<string> props = asset.SerializeProperties(seperater: " ");
+				IEnumerable<string> props = asset.SerializeProperties(separator: " ");
 				using(var input = new MultiTextPrompt(props)) {
 					if(input.ShowDialog(this) == DialogResult.OK) {
 						asset.ClearProperties();

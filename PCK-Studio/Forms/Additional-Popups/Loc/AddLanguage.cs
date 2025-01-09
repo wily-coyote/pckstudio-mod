@@ -1,12 +1,16 @@
 ﻿using System;
 using System.Windows.Forms;
+using System.Collections.Generic;
 
 namespace PckStudio.Forms.Additional_Popups.Loc {
 	public partial class AddLanguage : Form {
 		public string SelectedLanguage => LanguageComboBox.Text;
-		public AddLanguage(string[] avalibleLanguages) {
+
+		public AddLanguage(IEnumerable<string> availableLanguages) {
 			InitializeComponent();
-			LanguageComboBox.Items.AddRange(avalibleLanguages);
+			foreach(string lang in availableLanguages){
+				LanguageComboBox.Items.Add(lang);
+			}
 			LanguageComboBox.SelectedIndex = 0;
 		}
 

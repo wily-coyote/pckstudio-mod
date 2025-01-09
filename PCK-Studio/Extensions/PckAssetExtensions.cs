@@ -1,13 +1,12 @@
-﻿using OMI.Formats.Pck;
-using OMI.Workers;
-using PckStudio.Interfaces;
-using PckStudio.Internal.Deserializer;
-using PckStudio.Internal.Serializer;
-using System;
-using System.Collections.Generic;
-using System.Drawing;
+﻿using System;
 using System.IO;
-using System.Linq;
+using System.Drawing;
+using System.Collections.Generic;
+using PckStudio.Internal.Serializer;
+using PckStudio.Internal.Deserializer;
+using PckStudio.Interfaces;
+using OMI.Workers;
+using OMI.Formats.Pck;
 
 namespace PckStudio.Extensions {
 	internal static class PckAssetExtensions {
@@ -85,19 +84,23 @@ namespace PckStudio.Extensions {
 			return asset.Filename.Remove(asset.Filename.Length - (MipMap.Length + 1) - ext.Length) + ext;
 		}
 
-		internal static void DeserializeProperties(this PckAsset asset, IEnumerable<string> serializedData) {
-			IEnumerable<KeyValuePair<string, string>> lines = serializedData
-				.Select(line => line.Split([' '], 2))
-				.Where(keyValue => keyValue.Length == 2)
-				.Select(keyValue => new KeyValuePair<string, string>(keyValue[0].Replace(":", ""), keyValue[1]));
-			foreach(KeyValuePair<string, string> kv in lines) {
-				asset.AddProperty(kv);
+		internal static void DeserializeProperties(this PckAsset asset, IEnumerable<string> serializedData, string separator = ":") {
+			foreach(var line in serializedData){
+				string[] fields = line.Split(separator.ToCharArray(), 2, StringSplitOptions.None);
+				if(fields.Length >= 2){
+					asset.AddProperty(new KeyValuePair<string, string>(fields[0], fields[1]));
+				}
 			}
 		}
 
-		internal static IEnumerable<string> SerializeProperties(this PckAsset asset, string seperater = ":") {
-			IReadOnlyList<KeyValuePair<string, string>> properties = asset.GetProperties();
-			return properties.Select(property => property.Key + seperater + property.Value);
+		internal static string[] SerializeProperties(this PckAsset asset, string separator = ":") {
+			string[] properties = new string[asset.PropertyCount];
+			int i = 0;
+			foreach(var property in asset.GetProperties()){
+				properties[i] = property.Key + separator + property.Value;
+				i++;
+			}
+			return properties;
 		}
 	}
 }

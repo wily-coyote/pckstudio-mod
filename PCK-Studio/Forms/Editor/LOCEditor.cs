@@ -7,7 +7,6 @@ using PckStudio.Properties;
 using PckStudio.Internal;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Media;
 using System.Windows.Forms;
 
@@ -129,8 +128,7 @@ namespace PckStudio.Forms.Editor {
 		}
 
 		private void LanguageAdded(object sender, EventArgs e) {
-			string[] avalibleLang = GetAvailableLanguages().ToArray();
-			var dialog = new AddLanguage(avalibleLang);
+			var dialog = new AddLanguage(GetAvailableLanguages());
 			if(dialog.ShowDialog(this) == DialogResult.OK) {
 				locFile.AddLanguage(dialog.SelectedLanguage);
 				ReloadTranslationTable();
